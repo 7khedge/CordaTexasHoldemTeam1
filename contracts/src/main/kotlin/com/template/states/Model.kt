@@ -1,6 +1,6 @@
 package com.template.states
 
-import com.template.contracts.TemplateContract
+import com.template.contracts.GameContract
 import net.corda.core.contracts.BelongsToContract
 import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.StateRef
@@ -27,7 +27,7 @@ enum class RoundName { BLIND, DEAL, FLOP, RIVER, REVEAL }
 enum class ActionType { FOLD, MATCH, RAISE, CALL }
 
 
-@BelongsToContract(TemplateContract::class)
+@BelongsToContract(GameContract::class)
 data class Game(val cards : List<Card>,
                 val rounds : List<Round>,
                 val players : List<Party>,
