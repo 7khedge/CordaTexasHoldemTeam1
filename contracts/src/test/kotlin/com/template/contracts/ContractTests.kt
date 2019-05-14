@@ -32,6 +32,25 @@ import kotlin.test.assertEquals
 class ContractTests {
     private val ledgerServices = MockServices()
 
+
+    @Test
+    @Ignore
+    fun dealerShouldRegisterPlayers() {
+
+    }
+
+    //fun dealerShouldCollectBlinds()
+    //fun playerShouldPlaceBet()
+    //fun playerShouldFold()
+    //fun playerShouldMatch()
+    //fun dealerShouldDealFirst3Cards()
+    //fun dealerShouldDealNextCard()
+    //fun dealerShouldDealLastCard()
+    //fun dealerShouldPayWinnerFromPool()
+    //fun playerShouldBeAbleToLeaveGame()
+    //fun highestHandShouldWinAllCombinations()
+
+
     @Test
     @Ignore
     fun shouldTest() {
