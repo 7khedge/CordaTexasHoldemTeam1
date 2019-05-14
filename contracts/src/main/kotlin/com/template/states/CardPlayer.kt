@@ -7,6 +7,9 @@ import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import net.corda.core.serialization.CordaSerializable
 
+//Use CashPaymentFlow
+
+
 @CordaSerializable
 enum class CardSuit { HEART, CLUB, SPADE, DIAMOND}
 
@@ -16,17 +19,19 @@ enum class CardValue { ACE,  TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TE
 @CordaSerializable
 data class Card(val suit : CardSuit, val value: CardValue)
 
-@BelongsToContract(TemplateContract::class)
-data class GameAccount(var balance : Double,
-                       val owner : Party,
-                       override val participants: List<AbstractParty> = listOf(owner)) : ContractState
 
 @BelongsToContract(TemplateContract::class)
-data class GamePlayer(var hand : List<Card>,
-                      val owner : Party,
-                      override val participants: List<AbstractParty> = listOf(owner)) : ContractState
-
-@BelongsToContract(TemplateContract::class)
-data class Game(val players : List<Card>,
+data class Game(val cards : List<Card>,
+                val players : List<Party>,
+                val rounds : List<Round>,
                 val dealer : Party,
                 override val participants: List<AbstractParty> = listOf(dealer)) : ContractState
+
+@CordaSerializable
+enum class RoundName { BLIND, DEAL, FLOP, RIVER, REVEAL }
+
+@BelongsToContract(TemplateContract::class)
+data class Round(override val participants: List<AbstractParty> = listOf()) : ContractState
+
+@BelongsToContract(TemplateContract::class)
+data class Action(override val participants: List<AbstractParty> = listOf()) : ContractState
