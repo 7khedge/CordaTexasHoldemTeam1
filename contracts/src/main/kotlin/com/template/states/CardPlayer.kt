@@ -35,15 +35,11 @@ data class Game(val cards : List<Card>,
                 override val participants: List<AbstractParty> =  players + dealer) : ContractState
 
 
-@BelongsToContract(TemplateContract::class)
 data class Round(val name : RoundName,
                  val players : List<Party>,
-                 val actions : List<Action>,
-                 override val participants: List<AbstractParty> = players) : ContractState
+                 val actions : List<Action>)
 
-@BelongsToContract(TemplateContract::class)
 data class Action(
         val player : Party,
         val action : ActionType,
-        val amount : List<StateRef>,
-        override val participants: List<AbstractParty> = listOf()) : ContractState
+        val amount : List<StateRef>)
