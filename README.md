@@ -1,3 +1,7 @@
+-javaagent:lib/quasar-core-0.7.10.jar add to VM settings
+set the working directory to project root
+
+
 <p align="center">
   <img src="https://www.corda.net/wp-content/uploads/2016/11/fg005_corda_b.png" alt="Corda" width="500">
 </p>
