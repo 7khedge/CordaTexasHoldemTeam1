@@ -1,7 +1,9 @@
 package com.template.contracts
 
+import com.template.states.Game
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
+import net.corda.core.contracts.requireThat
 import net.corda.core.transactions.LedgerTransaction
 
 class GameContract : Contract {
@@ -11,10 +13,6 @@ class GameContract : Contract {
         const val ID = "com.template.contracts.GameContract"
     }
 
-    override fun verify(tx: LedgerTransaction) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
     // Used to indicate the transaction's intent.
     interface Commands : CommandData {
         class StartGame : Commands
@@ -22,6 +20,24 @@ class GameContract : Contract {
         class MatchCommand : Commands
         class RaiseCommand : Commands
         class CallCommand : Commands
+    }
+
+    override fun verify(tx: LedgerTransaction) {
+        val jobInputs = tx.inputsOfType<Game>()
+        val jobOutputs = tx.outputsOfType<Game>()
+        val jobCommand = tx.commandsOfType<Commands>().single()
+
+        when(jobCommand.value){
+            is Commands.StartGame -> requireThat {
+
+
+
+
+
+
+            }
+
+        }
     }
 
 }
