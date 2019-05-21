@@ -15,6 +15,7 @@ class GameContract : Contract {
 
     // Used to indicate the transaction's intent.
     interface Commands : CommandData {
+        class CreateGame : Commands
         class StartGame : Commands
         class FoldCommand : Commands
         class MatchCommand : Commands
