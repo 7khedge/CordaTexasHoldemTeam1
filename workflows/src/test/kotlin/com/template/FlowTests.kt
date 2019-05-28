@@ -1,6 +1,7 @@
 package com.template
 
 import com.template.flows.GameInitiator
+import com.template.flows.GameResponder
 import com.template.flows.Responder
 import net.corda.core.contracts.TransactionVerificationException
 import net.corda.core.identity.CordaX500Name
@@ -18,23 +19,18 @@ import kotlin.test.assertFailsWith
 class FlowTests {
      //CardDeckFactory()
      //Game(cardDeckFactory.cardDeck(), listOf<Party>(player1.party,player2.party,player3.party,player4.party), dealer.party)
-     private val player1 = TestIdentity(CordaX500Name("player1", "", "GB"))
-    private val player2 = TestIdentity(CordaX500Name("player2", "", "GB"))
-    private val player3 = TestIdentity(CordaX500Name("player3", "", "GB"))
-    private val player4 = TestIdentity(CordaX500Name("player4", "", "GB"))
-    private val dealer = TestIdentity(CordaX500Name("dealer", "", "GB"))
-    private val players = listOf(player1.party,player2.party,player3.party,player4.party)
-
+    
     private val network = MockNetwork(MockNetworkParameters(cordappsForAllNodes = listOf(
         TestCordapp.findCordapp("com.template.contracts"),
         TestCordapp.findCordapp("com.template.flows")
     )))
-    private val a = network.createNode()
-    private val b = network.createNode()
+    private val player1 = network.createNode(CordaX500Name("player1", "", "GB"))
+    private val player2 = network.createNode(CordaX500Name("player2", "", "GB"))
+    private val dealer = network.createNode(CordaX500Name("dealer", "", "GB"))
 
     init {
-        listOf(a, b).forEach {
-            it.registerInitiatedFlow(Responder::class.java)
+        listOf(player1, player2, dealer).forEach {
+            it.registerInitiatedFlow(GameResponder::class.java)
         }
     }
 
@@ -46,8 +42,9 @@ class FlowTests {
 
     @Test
     fun `dummy test`() {
-        var flow = GameInitiator(players, dealer.party)
-        var future = a.startFlow(flow)
+        var flow = GameInitiator(listOf(player1.info.legalIdentities.first(),
+                player2.info.legalIdentities.first()), dealer.info.legalIdentities.first())
+        var future = dealer.startFlow(flow)
         network.runNetwork()
 
         assertFailsWith<TransactionVerificationException> { future.getOrThrow() }

@@ -9,6 +9,7 @@ class CardDeckFactory {
                 cardDeck.add(Card(cardSuit, cardValue))
             }
         }
+        cardDeck.shuffle()
         return cardDeck
     }
 
