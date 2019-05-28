@@ -160,3 +160,4 @@ data class FuzzyGame(override val owner: AbstractParty, override val participant
 
 
 //TODO: implement receiver flow - all transactions are passed to all players
+//Suspendble
