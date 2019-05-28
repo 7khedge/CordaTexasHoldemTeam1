@@ -4,8 +4,10 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.GameContract
 import com.template.states.CardDeckFactory
 import com.template.states.Game
-import net.corda.core.contracts.Command
+import com.template.states.RoundName
+import net.corda.core.contracts.*
 import net.corda.core.flows.*
+import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
@@ -57,7 +59,8 @@ class GameInitiator(val players : List<Party> , val dealer : Party) : FlowLogic<
         // Stage 1.
         progressTracker.currentStep = GENERATING_TRANSACTION
         // Generate an unsigned transaction.
-        var game = Game(cardDeckFactory.cardDeck(), players, dealer)
+        var game = Game(cardDeckFactory.cardDeck(), players, dealer, RoundName.BLIND, emptyList(), dealer)
+
         //need to add dealer signer
         val txCommand = Command(GameContract.Commands.CreateGame(), game.players.map { it.owningKey } + dealer.owningKey)
         val txBuilder = TransactionBuilder(notary)
@@ -89,9 +92,71 @@ class GameInitiator(val players : List<Party> , val dealer : Party) : FlowLogic<
 }
 
 @InitiatedBy(GameInitiator::class)
-class GameResponder(val counterpartySession: FlowSession) : FlowLogic<Unit>() {
+class GameResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
     @Suspendable
-    override fun call() {
-        // Responder flow logic goes here.
+    override fun call() : SignedTransaction {
+        val signTransactionFlow = object : SignTransactionFlow(counterpartySession) {
+            override fun checkTransaction(stx: SignedTransaction) = requireThat {
+                val output = stx.tx.outputs.single().data
+                "This must be an IOU transaction." using (output is Game)
+                val iou = output as Game
+            }
+        }
+        val txId = subFlow(signTransactionFlow).id
+
+        return subFlow(ReceiveFinalityFlow(counterpartySession, expectedTxId = txId))
     }
 }
+
+@InitiatingFlow
+@StartableByRPC
+class FuzzyGameFlow(val command : FuzzyCommands) : FlowLogic<Unit>() {
+    override fun call() {
+        val currentGame = serviceHub.vaultService.queryBy(FuzzyGame::class.java).states.firstOrNull()
+        when (currentGame) {
+            null -> startGame(command)
+            else -> continueGame(command, currentGame)
+        }
+    }
+
+    private fun continueGame(command: FuzzyCommands, currentGame: StateAndRef<FuzzyGame>) {
+        val nextGameState = currentGame.state.data.generateNextGameState(command)
+        when (nextGameState) {
+            null -> {
+                // game has finished
+                // TODO: create a transaction that consumes the game, and emit no new game state
+                // and informs all participants so they can rock n roll their UI
+            }
+            else -> {
+                // TODO: new game state transaction, with all parit
+            }
+        }
+
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    private fun startGame(command: FuzzyCommands) {
+        assert(command is FuzzyCommands.StartGame) { "no game is in progress but command is ${command.javaClass.simpleName}" }
+        // TODO: create transaction
+    }
+}
+
+sealed class FuzzyCommands {
+    data class StartGame(val players: List<AbstractParty>) : FuzzyCommands()
+    data class PlaceBet(val amount: Amount<Unit>)
+
+}
+
+data class FuzzyGame(override val owner: AbstractParty, override val participants: List<AbstractParty>) : OwnableState {
+    override fun withNewOwner(newOwner: AbstractParty): CommandAndState {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    fun generateNextGameState(command: FuzzyCommands) : FuzzyGame? {
+        // core game logic
+    }
+
+}
+
+
+//TODO: implement receiver flow - all transactions are passed to all players

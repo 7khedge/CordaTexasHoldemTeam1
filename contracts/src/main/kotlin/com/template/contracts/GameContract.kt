@@ -16,11 +16,7 @@ class GameContract : Contract {
     // Used to indicate the transaction's intent.
     interface Commands : CommandData {
         class CreateGame : Commands
-        class StartGame : Commands
-        class FoldCommand : Commands
-        class MatchCommand : Commands
-        class RaiseCommand : Commands
-        class CallCommand : Commands
+        class NextTurn : Commands
     }
 
     override fun verify(tx: LedgerTransaction) {
@@ -29,7 +25,7 @@ class GameContract : Contract {
         val jobCommand = tx.commandsOfType<Commands>().single()
 
         when(jobCommand.value){
-            is Commands.StartGame -> requireThat {
+            is Commands.NextTurn -> requireThat {
 
 
 

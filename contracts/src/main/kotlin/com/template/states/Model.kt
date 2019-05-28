@@ -1,10 +1,7 @@
 package com.template.states
 
 import com.template.contracts.GameContract
-import net.corda.core.contracts.BelongsToContract
-import net.corda.core.contracts.LinearState
-import net.corda.core.contracts.StateRef
-import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.contracts.*
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import net.corda.core.serialization.CordaSerializable
@@ -37,8 +34,15 @@ data class Action(
 
 @BelongsToContract(GameContract::class)
 data class Game(val cards : List<Card>,
-                /* val rounds : List<Round>,*/
                 val players : List<Party>,
                 val dealer : Party,
+                val nextRoundName : RoundName,
+                val tableCards : List<Card>,
                 override val participants: List<AbstractParty> =  players + dealer,
-                override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState
+                override val linearId: UniqueIdentifier = UniqueIdentifier(),
+                override val owner: AbstractParty) : LinearState, OwnableState {
+
+    override fun withNewOwner(newOwner: AbstractParty): CommandAndState {
+        return CommandAndState( GameContract.Commands.NextTurn(), this.copy(owner = newOwner))
+    }
+}

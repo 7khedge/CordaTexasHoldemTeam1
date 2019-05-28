@@ -3,6 +3,7 @@ package com.template
 import com.template.flows.GameInitiator
 import com.template.flows.GameResponder
 import com.template.flows.Responder
+import com.template.states.Game
 import net.corda.core.contracts.TransactionVerificationException
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
@@ -14,6 +15,7 @@ import net.corda.testing.node.TestCordapp
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class FlowTests {
@@ -42,11 +44,14 @@ class FlowTests {
 
     @Test
     fun `dummy test`() {
-        var flow = GameInitiator(listOf(player1.info.legalIdentities.first(),
+        val flow = GameInitiator(listOf(player1.info.legalIdentities.first(),
                 player2.info.legalIdentities.first()), dealer.info.legalIdentities.first())
-        var future = dealer.startFlow(flow)
+        val future = dealer.startFlow(flow)
         network.runNetwork()
+        val stx = future.getOrThrow()
+        val q = dealer.services.vaultService.queryBy(Game::class.java)
 
-        assertFailsWith<TransactionVerificationException> { future.getOrThrow() }
+        assertEquals(1, q.states.size)
+        assertEquals(stx.id, q.states.first().ref.txhash)
     }
 }
