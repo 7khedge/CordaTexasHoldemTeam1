@@ -2,6 +2,7 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.GameContract
+import com.template.states.Action
 import com.template.states.CardDeckFactory
 import com.template.states.Game
 import com.template.states.RoundName
@@ -19,8 +20,7 @@ import net.corda.core.utilities.ProgressTracker.Step
 // *********
 @InitiatingFlow
 @StartableByRPC
-class GameInitiator(val players : List<Party>, val dealer : Party) : FlowLogic<SignedTransaction>() {
-    val cardDeckFactory  = CardDeckFactory()
+class GameNextStepInitiator(val game : Game, val action : Action) : FlowLogic<SignedTransaction>() {
 
     /**
      * The progress tracker checkpoints each stage of the flow and outputs the specified messages when each
@@ -111,7 +111,7 @@ class GameInitiator(val players : List<Party>, val dealer : Party) : FlowLogic<S
 }
 
 @InitiatedBy(GameInitiator::class)
-class GameResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
+class GameNextStepResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call() : SignedTransaction {
         val signTransactionFlow = object : SignTransactionFlow(counterpartySession) {

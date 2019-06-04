@@ -65,18 +65,36 @@ class FlowTests {
         val flow = GameInitiator(listOf(player1.info.legalIdentities.first(),
                 player2.info.legalIdentities.first()), dealer.info.legalIdentities.first())
         val future = dealer.startFlow(flow)
-        //When
+
+        //When (only required once)
         network.runNetwork()
-        //Then
-        /*execute constructed flow, the call method on the acceptor flow is executed*/
-        /* calls verify on Game Contract - no rules for now */
-        val stx = future.getOrThrow()
-        val q = dealer.services.vaultService.queryBy(Game::class.java)
+        var game = future.get().coreTransaction.outputStates.first() as Game
 
 
-        assertEquals(1, q.states.size)
-        assertEquals(stx.id, q.states.first().ref.txhash)
+
+       /* game.linearId
+
+        //Game state
+        val flow2 = GameInitiator(listOf(player1.info.legalIdentities.first(),
+                player2.info.legalIdentities.first()), dealer.info.legalIdentities.first())
+        val future2 = player1.startFlow(flow2)
+            player1 start
+                         - play input state 10 units
+                         - input game linearId
+                         - input orignal game (lookup inside)
+        places bug blind*/
+
+
     }
 
-
+    @Test
+    fun `play game`() {
+       // game = GameInitiator() + execute
+        // while (game.isNotFinished()) {
+            // currentPlayer = game.owner
+            // currentPlayerNode = getTheNode(currentPlayer)
+            // nextFlow = NextStepFlow(game, action)
+        // game = startFlow(nextFlow) .. future ...
+        // }
+    }
 }
