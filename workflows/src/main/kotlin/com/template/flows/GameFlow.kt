@@ -7,7 +7,6 @@ import com.template.states.Game
 import com.template.states.RoundName
 import net.corda.core.contracts.*
 import net.corda.core.flows.*
-import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
@@ -21,7 +20,6 @@ import net.corda.core.utilities.ProgressTracker.Step
 @StartableByRPC
 class GameInitiator(val players : List<Party> , val dealer : Party) : FlowLogic<SignedTransaction>() {
     val cardDeckFactory  = CardDeckFactory()
-
 
     /**
      * The progress tracker checkpoints each stage of the flow and outputs the specified messages when each
@@ -55,14 +53,15 @@ class GameInitiator(val players : List<Party> , val dealer : Party) : FlowLogic<
         // Obtain a reference to the notary we want to use.
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
 
-
         // Stage 1.
         progressTracker.currentStep = GENERATING_TRANSACTION
-        // Generate an unsigned transaction.
-        var game = Game(cardDeckFactory.cardDeck(), players, dealer, RoundName.BLIND, emptyList(), dealer)
+        val currentGame = serviceHub.vaultService.queryBy(Game::class.java).states.firstOrNull()
 
-        //need to add dealer signer
-        val txCommand = Command(GameContract.Commands.CreateGame(), game.players.map { it.owningKey } + dealer.owningKey)
+        val gameAndCommand = if (null == currentGame) { startGame() }
+                             else { continueGame(currentGame) }
+
+        var game = gameAndCommand.first
+        val txCommand = gameAndCommand.second
         val txBuilder = TransactionBuilder(notary)
                 .addOutputState(game, GameContract.ID)
                 .addCommand(txCommand)
@@ -87,8 +86,25 @@ class GameInitiator(val players : List<Party> , val dealer : Party) : FlowLogic<
         progressTracker.currentStep = FINALISING_TRANSACTION
         // Notarise and record the transaction in all players and dealer vaults.
         return subFlow(FinalityFlow(fullySignedTx, sessions, FINALISING_TRANSACTION.childProgressTracker()))
-
     }
+
+    private fun continueGame(currentGameStateRef: StateAndRef<Game>) : Pair<Game, Command<GameContract.Commands.NextTurn>> {
+        val currentGame = currentGameStateRef.state.data
+        // Generate an unsigned transaction.
+        var game = Game(cardDeckFactory.cardDeck(), players, dealer, currentGame.getNextRound(), emptyList(), dealer)
+        //need to add dealer signer
+        val txCommand = Command(GameContract.Commands.NextTurn(), game.players.map { it.owningKey } + dealer.owningKey)
+        return Pair(game, txCommand)
+    }
+
+    private fun startGame(): Pair<Game, Command<GameContract.Commands.StartGame>> {
+        // Generate an unsigned transaction.
+        var game = Game(cardDeckFactory.cardDeck(), players, dealer, RoundName.BLIND, emptyList(), dealer)
+        //need to add dealer signer
+        val txCommand = Command(GameContract.Commands.StartGame(), game.players.map { it.owningKey } + dealer.owningKey)
+        return Pair(game, txCommand)
+    }
+
 }
 
 @InitiatedBy(GameInitiator::class)
@@ -108,56 +124,3 @@ class GameResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTran
     }
 }
 
-@InitiatingFlow
-@StartableByRPC
-class FuzzyGameFlow(val command : FuzzyCommands) : FlowLogic<Unit>() {
-    override fun call() {
-        val currentGame = serviceHub.vaultService.queryBy(FuzzyGame::class.java).states.firstOrNull()
-        when (currentGame) {
-            null -> startGame(command)
-            else -> continueGame(command, currentGame)
-        }
-    }
-
-    private fun continueGame(command: FuzzyCommands, currentGame: StateAndRef<FuzzyGame>) {
-        val nextGameState = currentGame.state.data.generateNextGameState(command)
-        when (nextGameState) {
-            null -> {
-                // game has finished
-                // TODO: create a transaction that consumes the game, and emit no new game state
-                // and informs all participants so they can rock n roll their UI
-            }
-            else -> {
-                // TODO: new game state transaction, with all parit
-            }
-        }
-
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    private fun startGame(command: FuzzyCommands) {
-        assert(command is FuzzyCommands.StartGame) { "no game is in progress but command is ${command.javaClass.simpleName}" }
-        // TODO: create transaction
-    }
-}
-
-sealed class FuzzyCommands {
-    data class StartGame(val players: List<AbstractParty>) : FuzzyCommands()
-    data class PlaceBet(val amount: Amount<Unit>)
-
-}
-
-data class FuzzyGame(override val owner: AbstractParty, override val participants: List<AbstractParty>) : OwnableState {
-    override fun withNewOwner(newOwner: AbstractParty): CommandAndState {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    fun generateNextGameState(command: FuzzyCommands) : FuzzyGame? {
-        // core game logic
-    }
-
-}
-
-
-//TODO: implement receiver flow - all transactions are passed to all players
-//Suspendble

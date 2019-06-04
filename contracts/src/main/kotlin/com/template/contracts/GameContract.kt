@@ -15,8 +15,9 @@ class GameContract : Contract {
 
     // Used to indicate the transaction's intent.
     interface Commands : CommandData {
-        class CreateGame : Commands
+        class StartGame : Commands
         class NextTurn : Commands
+        class EndGame : Commands
     }
 
     override fun verify(tx: LedgerTransaction) {

@@ -19,9 +19,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class FlowTests {
-     //CardDeckFactory()
-     //Game(cardDeckFactory.cardDeck(), listOf<Party>(player1.party,player2.party,player3.party,player4.party), dealer.party)
-    
     private val network = MockNetwork(MockNetworkParameters(cordappsForAllNodes = listOf(
         TestCordapp.findCordapp("com.template.contracts"),
         TestCordapp.findCordapp("com.template.flows")
@@ -43,15 +40,43 @@ class FlowTests {
     fun tearDown() = network.stopNodes()
 
     @Test
-    fun `dummy test`() {
+    fun `start game`() {
+        //Given
+        /*Start a game with two players and a dealer, a constructed flow returned*/
         val flow = GameInitiator(listOf(player1.info.legalIdentities.first(),
                 player2.info.legalIdentities.first()), dealer.info.legalIdentities.first())
         val future = dealer.startFlow(flow)
+        //When
         network.runNetwork()
+        //Then
+        /*execute constructed flow, the call method on the acceptor flow is executed*/
+        /* calls verify on Game Contract - no rules for now */
         val stx = future.getOrThrow()
         val q = dealer.services.vaultService.queryBy(Game::class.java)
 
         assertEquals(1, q.states.size)
         assertEquals(stx.id, q.states.first().ref.txhash)
     }
+
+    @Test
+    fun `game next turn`() {
+        //Given
+        /*Start a game with two players and a dealer, a constructed flow returned*/
+        val flow = GameInitiator(listOf(player1.info.legalIdentities.first(),
+                player2.info.legalIdentities.first()), dealer.info.legalIdentities.first())
+        val future = dealer.startFlow(flow)
+        //When
+        network.runNetwork()
+        //Then
+        /*execute constructed flow, the call method on the acceptor flow is executed*/
+        /* calls verify on Game Contract - no rules for now */
+        val stx = future.getOrThrow()
+        val q = dealer.services.vaultService.queryBy(Game::class.java)
+
+
+        assertEquals(1, q.states.size)
+        assertEquals(stx.id, q.states.first().ref.txhash)
+    }
+
+
 }

@@ -5,8 +5,10 @@ import net.corda.core.contracts.*
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import net.corda.core.serialization.CordaSerializable
+import java.lang.IllegalStateException
 
 //Use CashPaymentFlow
+//Use Units for now
 @CordaSerializable
 enum class CardSuit { HEART, CLUB, SPADE, DIAMOND}
 
@@ -36,13 +38,20 @@ data class Action(
 data class Game(val cards : List<Card>,
                 val players : List<Party>,
                 val dealer : Party,
-                val nextRoundName : RoundName,
+                val round : RoundName,
                 val tableCards : List<Card>,
+                override val owner: AbstractParty,
                 override val participants: List<AbstractParty> =  players + dealer,
-                override val linearId: UniqueIdentifier = UniqueIdentifier(),
-                override val owner: AbstractParty) : LinearState, OwnableState {
+                override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState, OwnableState {
 
     override fun withNewOwner(newOwner: AbstractParty): CommandAndState {
         return CommandAndState( GameContract.Commands.NextTurn(), this.copy(owner = newOwner))
     }
+
+    fun getNextRound() : RoundName {
+        if( round == RoundName.REVEAL )
+            throw IllegalStateException("Game cannot progress beyond REVEAL")
+        return RoundName.values()[round.ordinal + 1]
+    }
+
 }
