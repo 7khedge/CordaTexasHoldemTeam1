@@ -16,13 +16,12 @@ class ContractTests {
     private val player3 = TestIdentity(CordaX500Name("player3", "", "GB"))
     private val player4 = TestIdentity(CordaX500Name("player4", "", "GB"))
     private val dealer = TestIdentity(CordaX500Name("dealer", "", "GB"))
-    private val unStartedGame  = Game(cardDeckFactory.cardDeck(), listOf<Party>(player1.party,player2.party,player3.party,player4.party), dealer.party)
+   // private val unStartedGame  = Game(cardDeckFactory.cardDeck(), listOf<Party>(player1.party,player2.party,player3.party,player4.party), dealer.party)
 
 
     @Test
     fun `GameContract should Start with at least four participants`() {
 
-
-
     }
+
 }

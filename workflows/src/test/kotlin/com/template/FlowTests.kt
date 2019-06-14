@@ -2,21 +2,22 @@ package com.template
 
 import com.template.flows.GameInitiator
 import com.template.flows.GameResponder
-import com.template.flows.Responder
+import com.template.flows.PlaceBetInitiator
+import com.template.states.Action
+import com.template.states.ActionType
 import com.template.states.Game
-import net.corda.core.contracts.TransactionVerificationException
+import com.template.states.RoundName
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
 import net.corda.core.utilities.getOrThrow
-import net.corda.testing.core.TestIdentity
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetworkParameters
+import net.corda.testing.node.StartedMockNode
 import net.corda.testing.node.TestCordapp
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class FlowTests {
     private val network = MockNetwork(MockNetworkParameters(cordappsForAllNodes = listOf(
@@ -26,11 +27,15 @@ class FlowTests {
     private val player1 = network.createNode(CordaX500Name("player1", "", "GB"))
     private val player2 = network.createNode(CordaX500Name("player2", "", "GB"))
     private val dealer = network.createNode(CordaX500Name("dealer", "", "GB"))
+    private val playerNodeMap = HashMap<Party,StartedMockNode>()
 
     init {
         listOf(player1, player2, dealer).forEach {
             it.registerInitiatedFlow(GameResponder::class.java)
         }
+        playerNodeMap[player1.info.legalIdentities.first()] = player1
+        playerNodeMap[player2.info.legalIdentities.first()] = player2
+        playerNodeMap[dealer.info.legalIdentities.first()] = dealer
     }
 
     @Before
@@ -62,30 +67,34 @@ class FlowTests {
     fun `game next turn`() {
         //Given
         /*Start a game with two players and a dealer, a constructed flow returned*/
-        val flow = GameInitiator(listOf(player1.info.legalIdentities.first(),
+        val startGameFlow = GameInitiator(listOf(player1.info.legalIdentities.first(),
                 player2.info.legalIdentities.first()), dealer.info.legalIdentities.first())
-        val future = dealer.startFlow(flow)
+        val future = dealer.startFlow(startGameFlow)
 
         //When (only required once)
         network.runNetwork()
+
         var game = future.get().coreTransaction.outputStates.first() as Game
 
+        //Action
+        assertEquals(RoundName.BLIND, game.round)
 
+        val action = Action(game.owner, ActionType.BIG_BLIND, 10)
+        //TODO: as part Action nextTurn flow should run a subFlow transferring funds from player to dealer
+        val placeBetFlow = PlaceBetInitiator(action)
+        var ownerNode = playerNodeMap[game.owner]
+        if(ownerNode != null) {
+            var nextFuture = ownerNode.startFlow(placeBetFlow)
+            network.runNetwork()
 
-       /* game.linearId
+            var nextGame = nextFuture.get().coreTransaction.outputStates.first() as Game
 
-        //Game state
-        val flow2 = GameInitiator(listOf(player1.info.legalIdentities.first(),
-                player2.info.legalIdentities.first()), dealer.info.legalIdentities.first())
-        val future2 = player1.startFlow(flow2)
-            player1 start
-                         - play input state 10 units
-                         - input game linearId
-                         - input orignal game (lookup inside)
-        places bug blind*/
+            assertEquals(10, nextGame.tableAccount)
+        }
 
 
     }
+
 
     @Test
     fun `play game`() {
@@ -93,7 +102,7 @@ class FlowTests {
         // while (game.isNotFinished()) {
             // currentPlayer = game.owner
             // currentPlayerNode = getTheNode(currentPlayer)
-            // nextFlow = NextStepFlow(game, action)
+            // nextFlow = NextStepFlow(game, actionType)
         // game = startFlow(nextFlow) .. future ...
         // }
     }

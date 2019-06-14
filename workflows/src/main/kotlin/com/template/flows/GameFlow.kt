@@ -19,8 +19,8 @@ import net.corda.core.utilities.ProgressTracker.Step
 // *********
 @InitiatingFlow
 @StartableByRPC
-class GameInitiator(val players : List<Party>, val dealer : Party) : FlowLogic<SignedTransaction>() {
-    val cardDeckFactory  = CardDeckFactory()
+class GameInitiator(private val players : List<Party>, private val dealer : Party) : FlowLogic<SignedTransaction>() {
+    private val cardDeckFactory  = CardDeckFactory()
 
     /**
      * The progress tracker checkpoints each stage of the flow and outputs the specified messages when each
@@ -56,13 +56,10 @@ class GameInitiator(val players : List<Party>, val dealer : Party) : FlowLogic<S
 
         // Stage 1.
         progressTracker.currentStep = GENERATING_TRANSACTION
-        val currentGame = serviceHub.vaultService.queryBy(Game::class.java).states.firstOrNull()
 
-        val gameAndCommand = if (null == currentGame) { startGame() }
-                             else { continueGame(currentGame) }
+        var (game, txCommand) = startGame()
 
-        var game = gameAndCommand.first
-        val txCommand = gameAndCommand.second
+
         val txBuilder = TransactionBuilder(notary)
                 .addOutputState(game, GameContract.ID)
                 .addCommand(txCommand)
@@ -89,15 +86,6 @@ class GameInitiator(val players : List<Party>, val dealer : Party) : FlowLogic<S
         return subFlow(FinalityFlow(fullySignedTx, sessions, FINALISING_TRANSACTION.childProgressTracker()))
     }
 
-    private fun continueGame(currentGameStateRef: StateAndRef<Game>) : Pair<Game, Command<GameContract.Commands.NextTurn>> {
-        val currentGame = currentGameStateRef.state.data
-        var game = newRound(currentGame.getNextRound(), dealer) // Generate an unsigned transaction.
-
-        //need to add dealer signer
-        val txCommand = Command(GameContract.Commands.NextTurn(), game.players.map { it.owningKey } + dealer.owningKey)
-        return Pair(game, txCommand)
-    }
-
     private fun startGame(): Pair<Game, Command<GameContract.Commands.StartGame>> {
         var game = newRound(RoundName.BLIND, players[0]) // Generate an unsigned transaction.
         //need to add dealer signer
@@ -106,7 +94,7 @@ class GameInitiator(val players : List<Party>, val dealer : Party) : FlowLogic<S
     }
 
     private fun newRound(nextRound: RoundName, nextOwner: Party) =
-            Game(cardDeckFactory.cardDeck(), players, dealer, nextRound, emptyList(), nextOwner)
+            Game(cardDeckFactory.cardDeck(), players, dealer, nextRound, emptyMap(), emptyList(), nextOwner)
 
 }
 
@@ -116,9 +104,7 @@ class GameResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTran
     override fun call() : SignedTransaction {
         val signTransactionFlow = object : SignTransactionFlow(counterpartySession) {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
-                val output = stx.tx.outputs.single().data
-                "This must be an IOU transaction." using (output is Game)
-                val iou = output as Game
+                //TODO: Implement GameResponder Flow
             }
         }
         val txId = subFlow(signTransactionFlow).id
