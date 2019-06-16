@@ -3,10 +3,13 @@ package com.template.flows
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.GameContract
 import com.template.states.*
-import net.corda.core.contracts.*
+import com.template.states.ActionType.*
+import com.template.states.RoundName.*
+import net.bytebuddy.implementation.bytecode.StackManipulation
+import net.corda.core.contracts.Command
+import net.corda.core.contracts.StateAndRef
+import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
-import net.corda.core.identity.AbstractParty
-import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
@@ -15,10 +18,10 @@ import net.corda.core.utilities.ProgressTracker.Step
 // *********
 // * Flows *
 // *********
+
 @InitiatingFlow
 @StartableByRPC
-class GameInitiator(private val players : List<Party>, private val dealer : Party) : FlowLogic<SignedTransaction>() {
-    private val cardDeckFactory  = CardDeckFactory()
+class DealInitiator : FlowLogic<SignedTransaction>() {
 
     /**
      * The progress tracker checkpoints each stage of the flow and outputs the specified messages when each
@@ -54,12 +57,13 @@ class GameInitiator(private val players : List<Party>, private val dealer : Part
 
         // Stage 1.
         progressTracker.currentStep = GENERATING_TRANSACTION
+        val currentGame = serviceHub.vaultService.queryBy(Game::class.java).states.firstOrNull() ?: throw IllegalArgumentException("Could find game in ledger")
 
-        var (game, txCommand) = startGame()
 
+        var (newGame, txCommand) = dealCards(currentGame)
 
         val txBuilder = TransactionBuilder(notary)
-                .addOutputState(game, GameContract.ID)
+                .addOutputState(newGame, GameContract.ID)
                 .addCommand(txCommand)
 
         // Stage 2.
@@ -75,7 +79,7 @@ class GameInitiator(private val players : List<Party>, private val dealer : Part
         // Stage 4.
         progressTracker.currentStep = GATHERING_SIGS
         // Send the state to other players, and receive it back with their signature.
-        val sessions = game.players.map { initiateFlow(it.party) }
+        val sessions = currentGame.state.data.allExceptOwner().map { initiateFlow(it) }
         val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, sessions, GATHERING_SIGS.childProgressTracker()))
 
         // Stage 5.
@@ -84,25 +88,31 @@ class GameInitiator(private val players : List<Party>, private val dealer : Part
         return subFlow(FinalityFlow(fullySignedTx, sessions, FINALISING_TRANSACTION.childProgressTracker()))
     }
 
-    private fun startGame(): Pair<Game, Command<GameContract.Commands.StartGame>> {
-        var game = newRound(RoundName.BLIND, players[0]) // Generate an unsigned transaction.
-        //need to add dealer signer
-        val txCommand = Command(GameContract.Commands.StartGame(), game.players.map { it.party.owningKey } + dealer.owningKey)
-        return Pair(game, txCommand)
+    private fun dealCards(currentGameStateRef: StateAndRef<Game>): Pair<Game, Command<GameContract.Commands.Deal>> {
+        val currentGame = currentGameStateRef.state.data
+        val txCommand = Command(GameContract.Commands.Deal(), currentGame.players.map { it.party.owningKey } + currentGame.dealer.party.owningKey)
+        val game = when (currentGame.round) {
+            DEAL -> currentGame.deal()
+            FLOP -> currentGame.flop()
+            TURN -> currentGame.turn()
+            RIVER -> currentGame.river()
+            else -> currentGame
+        }
+        if(game == currentGame){
+            throw IllegalStateException("Invalid round for dealing " + game.round)
+        }
+        return Pair(game,txCommand)
     }
-
-    private fun newRound(nextRound: RoundName, nextOwner: Party) =
-            Game(Dealer(dealer), players.map { Player(it) }, nextRound, nextOwner)
 
 }
 
-@InitiatedBy(GameInitiator::class)
-class GameResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
+@InitiatedBy(DealInitiator::class)
+class DealResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call() : SignedTransaction {
         val signTransactionFlow = object : SignTransactionFlow(counterpartySession) {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
-                //TODO: Implement GameResponder Flow
+                //TODO: Implement PlaceBetResponder Flow
             }
         }
         val txId = subFlow(signTransactionFlow).id
@@ -110,4 +120,5 @@ class GameResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTran
         return subFlow(ReceiveFinalityFlow(counterpartySession, expectedTxId = txId))
     }
 }
+
 

@@ -2,11 +2,10 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.GameContract
-import com.template.states.Action
 import com.template.states.ActionType.*
+import com.template.states.Bet
 import com.template.states.Game
 import net.corda.core.contracts.Command
-import net.corda.core.contracts.Requirements.using
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
@@ -21,7 +20,7 @@ import net.corda.core.utilities.ProgressTracker.Step
 
 @InitiatingFlow
 @StartableByRPC
-class PlaceBetInitiator(private val action : Action) : FlowLogic<SignedTransaction>() {
+class PlaceBetInitiator(private val action : Bet) : FlowLogic<SignedTransaction>() {
 
     /**
      * The progress tracker checkpoints each stage of the flow and outputs the specified messages when each
@@ -88,17 +87,18 @@ class PlaceBetInitiator(private val action : Action) : FlowLogic<SignedTransacti
         return subFlow(FinalityFlow(fullySignedTx, sessions, FINALISING_TRANSACTION.childProgressTracker()))
     }
 
-    private fun applyAction(currentGameStateRef: StateAndRef<Game>, action: Action) : Pair<Game, Command<GameContract.Commands.NextTurn>> {
+    private fun applyAction(currentGameStateRef: StateAndRef<Game>, bet: Bet) : Pair<Game, Command<GameContract.Commands.PlaceBet>> {
         val currentGame = currentGameStateRef.state.data
-        val txCommand = Command(GameContract.Commands.NextTurn(), currentGame.players.map { it.owningKey } + currentGame.dealer.owningKey)
-        if(action.actionType != FOLD) {
-            return Pair(updateTableAccount(action.amount, currentGame), txCommand)
+        val txCommand = Command(GameContract.Commands.PlaceBet(), currentGame.players.map { it.party.owningKey } + currentGame.dealer.party.owningKey)
+        if(bet.actionType != FOLD) {
+            return Pair(updateTableAccount(bet.amount, currentGame), txCommand)
         }
         return Pair(currentGame, txCommand)
     }
 
     private fun updateTableAccount(tableAccount : Int, currentGame : Game ) : Game =
-            currentGame.copy(owner = currentGame.getNextOwner(), tableAccount = currentGame.tableAccount + tableAccount)
+            currentGame.copy( owner = currentGame.getNextOwner(),
+                    dealer = currentGame.dealer.copy(tableAccount = tableAccount + tableAccount))
 
 }
 

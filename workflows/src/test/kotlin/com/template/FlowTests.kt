@@ -80,21 +80,17 @@ class FlowTests {
         assertEquals(RoundName.BLIND, game.round)
 
         val action = Action(game.owner, ActionType.BIG_BLIND, 10)
-        //TODO: as part Action nextTurn flow should run a subFlow transferring funds from player to dealer
         val placeBetFlow = PlaceBetInitiator(action)
-        var ownerNode = playerNodeMap[game.owner]
+        val ownerNode = playerNodeMap[game.owner]
         if(ownerNode != null) {
-            var nextFuture = ownerNode.startFlow(placeBetFlow)
+            val nextFuture = ownerNode.startFlow(placeBetFlow)
             network.runNetwork()
 
-            var nextGame = nextFuture.get().coreTransaction.outputStates.first() as Game
+            val nextGame = nextFuture.get().coreTransaction.outputStates.first() as Game
 
             assertEquals(10, nextGame.tableAccount)
         }
-
-
     }
-
 
     @Test
     fun `play game`() {

@@ -16,7 +16,8 @@ class GameContract : Contract {
     // Used to indicate the transaction's intent.
     interface Commands : CommandData {
         class StartGame : Commands
-        class NextTurn : Commands
+        class PlaceBet : Commands
+        class Deal : Commands
         class EndGame : Commands
     }
 
@@ -26,15 +27,8 @@ class GameContract : Contract {
         val jobCommand = tx.commandsOfType<Commands>().single()
 
         when(jobCommand.value){
-            is Commands.NextTurn -> requireThat {
-
-
-
-
-
-
+            is Commands.PlaceBet -> requireThat {
             }
-
         }
     }
 
