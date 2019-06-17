@@ -47,6 +47,7 @@ data class Game(val dealer : Dealer,
                 val players : List<Player>,
                 val round : RoundName,
                 override val owner: Party,
+                val roundBets : Map<RoundName,Map<Player,Bet>> = RoundName.values().map { Pair(it, emptyMap<Player,Bet>()) }.toMap(),
                 override val participants: List<Party> =  players.map { it.party } + dealer.party,
                 override val linearId: UniqueIdentifier = UniqueIdentifier(),
                 val bigBlindAmount : Int = 10,
@@ -61,6 +62,8 @@ data class Game(val dealer : Dealer,
     fun hasFinished() :  Boolean {
         return round == RoundName.END
     }
+
+    fun findPlayer(party: Party) = players.filter { it.party == party }.first()
 
     fun getNextRound() : RoundName {
         if( round == RoundName.END )
@@ -121,20 +124,5 @@ data class Game(val dealer : Dealer,
     }
 }
 
-/*fun Game.foo() : Game {
-    return this.copy()
-}
 
-fun <T : Number> Collection<T>.wibble() : Collection<String> {
-    return this.map { it.toString() }
-}
-
-
-fun test() {
-    val n = listOf(1, 2, 3, 4)
-    val s = n.map { it.toString() }
-    n.wibble()
-   // s.wibble()
-
-}*/
 

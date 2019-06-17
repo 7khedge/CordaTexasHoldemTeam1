@@ -2,9 +2,10 @@ package com.template.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.GameContract
-import com.template.states.ActionType.*
 import com.template.states.Bet
 import com.template.states.Game
+import com.template.states.Player
+import com.template.states.RoundName
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.requireThat
@@ -90,15 +91,30 @@ class PlaceBetInitiator(private val action : Bet) : FlowLogic<SignedTransaction>
     private fun applyAction(currentGameStateRef: StateAndRef<Game>, bet: Bet) : Pair<Game, Command<GameContract.Commands.PlaceBet>> {
         val currentGame = currentGameStateRef.state.data
         val txCommand = Command(GameContract.Commands.PlaceBet(), currentGame.players.map { it.party.owningKey } + currentGame.dealer.party.owningKey)
-        if(bet.actionType != FOLD) {
-            return Pair(updateTableAccount(bet.amount, currentGame), txCommand)
-        }
-        return Pair(currentGame, txCommand)
+        return Pair(updateGame(bet, currentGame), txCommand)
     }
 
-    private fun updateTableAccount(tableAccount : Int, currentGame : Game ) : Game =
-            currentGame.copy( owner = currentGame.getNextOwner(),
-                    dealer = currentGame.dealer.copy(tableAccount = tableAccount + tableAccount))
+    private fun updateGame(bet : Bet, currentGame : Game ) : Game =
+            currentGame.copy(
+                    owner = currentGame.getNextOwner(),
+                    players = updatePlayerAccount(currentGame, bet),
+                    dealer = currentGame.dealer.copy(tableAccount = currentGame.dealer.tableAccount + bet.amount),
+                    roundBets = addRoundBet(currentGame, bet))
+
+    private fun updatePlayerAccount(currentGame: Game, bet: Bet): List<Player> {
+        val toMutableList = currentGame.players.toMutableList()
+        val player = currentGame.findPlayer(currentGame.owner)
+        val newPlayer = player.copy(account = player.account - bet.amount)
+        val indexOf = toMutableList.indexOf(player)
+        toMutableList[indexOf] = newPlayer
+        return toMutableList.toList()
+    }
+
+    private fun addRoundBet(currentGame : Game, bet : Bet) : Map<RoundName,Map<Player,Bet>> {
+        val playerBet : MutableMap<Player, Bet> = (currentGame.roundBets[currentGame.round] ?: error("Cannot find bets for ${currentGame.round}")).toMutableMap()
+        playerBet[currentGame.findPlayer(party = currentGame.owner)] = bet
+        return currentGame.roundBets.plus(Pair(currentGame.round, playerBet))
+    }
 
 }
 

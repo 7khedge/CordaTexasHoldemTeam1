@@ -3,10 +3,7 @@ package com.template
 import com.template.flows.GameInitiator
 import com.template.flows.GameResponder
 import com.template.flows.PlaceBetInitiator
-import com.template.states.Action
-import com.template.states.ActionType
-import com.template.states.Game
-import com.template.states.RoundName
+import com.template.states.*
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
 import net.corda.core.utilities.getOrThrow
@@ -79,16 +76,14 @@ class FlowTests {
         //Action
         assertEquals(RoundName.BLIND, game.round)
 
-        val action = Action(game.owner, ActionType.BIG_BLIND, 10)
+        val action = Bet(10, game.owner, ActionType.BIG_BLIND)
         val placeBetFlow = PlaceBetInitiator(action)
         val ownerNode = playerNodeMap[game.owner]
         if(ownerNode != null) {
             val nextFuture = ownerNode.startFlow(placeBetFlow)
             network.runNetwork()
-
             val nextGame = nextFuture.get().coreTransaction.outputStates.first() as Game
-
-            assertEquals(10, nextGame.tableAccount)
+            assertEquals(10, nextGame.dealer.tableAccount)
         }
     }
 

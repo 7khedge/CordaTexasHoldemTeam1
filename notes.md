@@ -51,3 +51,20 @@ data class FuzzyGame(override val owner: AbstractParty, override val participant
 
 //TODO: implement receiver flow - all transactions are passed to all players
 //Suspendble
+
+/*fun Game.foo() : Game {
+    return this.copy()
+}
+
+fun <T : Number> Collection<T>.wibble() : Collection<String> {
+    return this.map { it.toString() }
+}
+
+
+fun test() {
+    val n = listOf(1, 2, 3, 4)
+    val s = n.map { it.toString() }
+    n.wibble()
+   // s.wibble()
+
+}*/
