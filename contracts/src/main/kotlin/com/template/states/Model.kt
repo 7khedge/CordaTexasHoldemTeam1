@@ -16,7 +16,7 @@ enum class CardSuit { HEART, CLUB, SPADE, DIAMOND}
 enum class CardValue { ACE,  TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TEN, JACK, QUEEN, KING }
 
 @CordaSerializable
-data class Card(val suit : CardSuit, val value: CardValue)
+data class Card(val value: CardValue, val suit : CardSuit)
 
 @CordaSerializable
 enum class RoundName { BLIND, DEAL, FLOP, TURN, RIVER, REVEAL}

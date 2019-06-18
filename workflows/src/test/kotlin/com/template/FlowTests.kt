@@ -12,11 +12,9 @@ import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetworkParameters
 import net.corda.testing.node.StartedMockNode
 import net.corda.testing.node.TestCordapp
-import org.hamcrest.CoreMatchers
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import sun.font.CoreMetrics
 import kotlin.test.assertEquals
 
 class FlowTests {
@@ -111,10 +109,27 @@ class FlowTests {
 
 
         val dealGame2 = playRound(dealGame, RoundName.DEAL, RoundName.FLOP)
+        printGame(dealGame2, RoundName.DEAL)
         val flopGame = playRound(dealGame2, RoundName.FLOP, RoundName.TURN)
+        printGame(flopGame, RoundName.FLOP)
         val turnGame = playRound(flopGame, RoundName.TURN, RoundName.RIVER)
+        printGame(turnGame, RoundName.TURN)
         val riverGame = playRound(turnGame, RoundName.RIVER, RoundName.REVEAL)
+        printGame(riverGame, RoundName.RIVER)
         assertEquals(riverGame.owner, dealer.info.legalIdentities.first())
+    }
+
+    private fun printGame(game: Game, round: RoundName) {
+        val builder = StringBuilder()
+        builder.appendln("****************************")
+        builder.appendln("Round  $round")
+        builder.append("Table cards  ")
+        game.dealer.tableCards.map { builder.appendln(it) }
+        builder.appendln("\tTable Account  " + game.dealer.tableAccount)
+        builder.appendln( "Player 1 Cards" + game.players[0].cards + " : Account" + game.players[0].account)
+        builder.appendln( "Player 2 Cards" + game.players[1].cards + " : Account" + game.players[1].account)
+        builder.appendln("****************************")
+        System.out.println(builder)
     }
 
     private fun playRound(dealGame: Game, round: RoundName, nextRound: RoundName): Game {

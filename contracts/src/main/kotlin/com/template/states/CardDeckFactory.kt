@@ -6,7 +6,7 @@ class CardDeckFactory {
         val cardDeck = ArrayList<Card>()
         CardSuit.values().map { cardSuit ->
             CardValue.values().map { cardValue ->
-                cardDeck.add(Card(cardSuit, cardValue))
+                cardDeck.add(Card(cardValue, cardSuit))
             }
         }
         cardDeck.shuffle()
