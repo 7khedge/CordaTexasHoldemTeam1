@@ -123,11 +123,10 @@ class FlowTests {
         val builder = StringBuilder()
         builder.appendln("****************************")
         builder.appendln("Round  $round")
-        builder.append("Table cards  ")
+        builder.appendln("Table  Account [" + game.dealer.tableAccount + "]")
         game.dealer.tableCards.map { builder.appendln(it) }
-        builder.appendln("\tTable Account  " + game.dealer.tableAccount)
-        builder.appendln( "Player 1 Cards" + game.players[0].cards + " : Account" + game.players[0].account)
-        builder.appendln( "Player 2 Cards" + game.players[1].cards + " : Account" + game.players[1].account)
+        builder.appendln( "Player 1 Cards" + game.players[0].cards + " : Account " + game.players[0].account)
+        builder.appendln( "Player 2 Cards" + game.players[1].cards + " : Account " + game.players[1].account)
         builder.appendln("****************************")
         System.out.println(builder)
     }
