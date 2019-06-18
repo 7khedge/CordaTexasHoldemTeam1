@@ -2,6 +2,8 @@ What has been covered
 
 States
 Flows
+    -- Add Player flow
+    -- End Game flow
 Contracts
 Services
  Use Pictorial Representation to demonstate 
