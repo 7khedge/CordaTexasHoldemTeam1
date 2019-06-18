@@ -19,7 +19,7 @@ enum class CardValue { ACE,  TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TE
 data class Card(val suit : CardSuit, val value: CardValue)
 
 @CordaSerializable
-enum class RoundName { BLIND, DEAL, FLOP, TURN, RIVER, REVEAL, END }
+enum class RoundName { BLIND, DEAL, FLOP, TURN, RIVER, REVEAL}
 
 @CordaSerializable
 enum class ActionType { BIG_BLIND, LITTLE_BLIND, FOLD, MATCH, RAISE, CALL }
@@ -60,16 +60,12 @@ data class Game(val dealer : Dealer,
     fun allExceptOwner()  = participants.filter { party -> party != owner }
 
     fun hasFinished() :  Boolean {
-        return round == RoundName.END
+        return round == RoundName.REVEAL
     }
 
-    fun findPlayer(party: Party) = players.filter { it.party == party }.first()
+    fun findPlayer(party: Party) = players.first { it.party == party }
 
-    fun getNextRound() : RoundName {
-        if( round == RoundName.END )
-            throw IllegalStateException("Game cannot progress beyond END")
-        return RoundName.values()[round.ordinal + 1]
-    }
+    fun getCurrentPlayer() = players.first {it.party == owner}
 
     fun getNextOwner() : Party {
         if ( owner == dealer.party)
@@ -87,9 +83,9 @@ data class Game(val dealer : Dealer,
     fun deal(): Game {
         val dealingDeck = dealer.deck.toMutableList()
         val newPlayers = players.map { it.copy(cards = listOf(dealingDeck.removeAt(0), dealingDeck.removeAt(0))) }
-        return copy(dealer = dealer.copy(deck = dealingDeck),
-                    players = newPlayers,
-                    round = RoundName.FLOP)
+        return copy(owner = getNextOwner(),
+                    dealer = dealer.copy(deck = dealingDeck),
+                    players = newPlayers)
     }
 
     /**
@@ -100,7 +96,7 @@ data class Game(val dealer : Dealer,
         val tableCards = listOf(dealingDeck.removeAt(0),
                 dealingDeck.removeAt(0),
                 dealingDeck.removeAt(0))
-        return copy(dealer = dealer.copy(deck = dealingDeck, tableCards = tableCards))
+        return copy(owner = getNextOwner(), dealer = dealer.copy(deck = dealingDeck, tableCards = tableCards))
     }
 
     /**
@@ -120,7 +116,7 @@ data class Game(val dealer : Dealer,
     private fun addCardToTable(): Game {
         val dealingDeck = dealer.deck.toMutableList()
         val tableCards = dealer.tableCards + dealingDeck.removeAt(0)
-        return copy(dealer = dealer.copy(deck = dealingDeck, tableCards = tableCards))
+        return copy(owner = getNextOwner(), dealer = dealer.copy(deck = dealingDeck, tableCards = tableCards))
     }
 }
 

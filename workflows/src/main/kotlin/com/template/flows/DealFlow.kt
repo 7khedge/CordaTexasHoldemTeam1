@@ -57,7 +57,7 @@ class DealInitiator : FlowLogic<SignedTransaction>() {
 
         // Stage 1.
         progressTracker.currentStep = GENERATING_TRANSACTION
-        val currentGame = serviceHub.vaultService.queryBy(Game::class.java).states.firstOrNull() ?: throw IllegalArgumentException("Could find game in ledger")
+        val currentGame = serviceHub.vaultService.queryBy(Game::class.java).states.lastOrNull() ?: throw IllegalArgumentException("Could find game in ledger")
 
 
         var (newGame, txCommand) = dealCards(currentGame)

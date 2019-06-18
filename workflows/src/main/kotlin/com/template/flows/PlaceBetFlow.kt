@@ -6,6 +6,7 @@ import com.template.states.Bet
 import com.template.states.Game
 import com.template.states.Player
 import com.template.states.RoundName
+import com.template.states.RoundName.*
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.requireThat
@@ -14,6 +15,7 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.ProgressTracker.Step
+import java.lang.IllegalStateException
 
 // *********
 // * Flows *
@@ -57,10 +59,10 @@ class PlaceBetInitiator(private val action : Bet) : FlowLogic<SignedTransaction>
 
         // Stage 1.
         progressTracker.currentStep = GENERATING_TRANSACTION
-        val currentGame = serviceHub.vaultService.queryBy(Game::class.java).states.firstOrNull() ?: throw IllegalArgumentException("Could find game in ledger")
+        val currentGame = serviceHub.vaultService.queryBy(Game::class.java).states.lastOrNull() ?: throw IllegalArgumentException("Could find game in ledger")
 
 
-        var (newGame, txCommand) = applyAction(currentGame, action)
+        val (newGame, txCommand) = applyBet(currentGame, action)
 
         val txBuilder = TransactionBuilder(notary)
                 .addOutputState(newGame, GameContract.ID)
@@ -88,18 +90,51 @@ class PlaceBetInitiator(private val action : Bet) : FlowLogic<SignedTransaction>
         return subFlow(FinalityFlow(fullySignedTx, sessions, FINALISING_TRANSACTION.childProgressTracker()))
     }
 
-    private fun applyAction(currentGameStateRef: StateAndRef<Game>, bet: Bet) : Pair<Game, Command<GameContract.Commands.PlaceBet>> {
+    private fun applyBet(currentGameStateRef: StateAndRef<Game>, bet: Bet) : Pair<Game, Command<GameContract.Commands.PlaceBet>> {
         val currentGame = currentGameStateRef.state.data
         val txCommand = Command(GameContract.Commands.PlaceBet(), currentGame.players.map { it.party.owningKey } + currentGame.dealer.party.owningKey)
         return Pair(updateGame(bet, currentGame), txCommand)
     }
 
-    private fun updateGame(bet : Bet, currentGame : Game ) : Game =
-            currentGame.copy(
-                    owner = currentGame.getNextOwner(),
-                    players = updatePlayerAccount(currentGame, bet),
-                    dealer = currentGame.dealer.copy(tableAccount = currentGame.dealer.tableAccount + bet.amount),
-                    roundBets = addRoundBet(currentGame, bet))
+    private fun updateGame(bet : Bet, currentGame : Game ) : Game {
+        val roundBets = addRoundBet(currentGame, bet)
+        val roundName = getRound(roundBets, currentGame)
+        return currentGame.copy(
+                round = roundName,
+                owner = currentGame.getNextOwner(),
+                players = updatePlayerAccount(currentGame, bet),
+                dealer = currentGame.dealer.copy(tableAccount = currentGame.dealer.tableAccount + bet.amount),
+                roundBets = roundBets)
+    }
+
+    private fun getRound(roundBets: Map<RoundName, Map<Player, Bet>>, currentGame: Game): RoundName {
+        return when(currentGame.round){
+            BLIND -> leaveBlind(roundBets[currentGame.round])
+            else -> leaveRound(roundBets[currentGame.round], currentGame.players.size, currentGame.round)
+        }
+    }
+
+    private fun leaveRound(roundBets: Map<Player, Bet>?, expectedBets : Int, round : RoundName): RoundName {
+        if(roundBets != null){
+            if( roundBets.size == expectedBets)
+                return getNextRound(round)
+        }
+        return round
+    }
+
+    private fun leaveBlind(roundBets : Map<Player, Bet>? ): RoundName {
+        if (roundBets != null) {
+            if ( roundBets.size == 2 )
+                return DEAL
+        }
+        return BLIND
+    }
+
+    private fun getNextRound(round : RoundName) : RoundName {
+        if( round == REVEAL )
+            throw IllegalStateException("Game cannot progress beyond END")
+        return values()[round.ordinal + 1]
+    }
 
     private fun updatePlayerAccount(currentGame: Game, bet: Bet): List<Player> {
         val toMutableList = currentGame.players.toMutableList()

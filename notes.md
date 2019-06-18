@@ -48,6 +48,17 @@ data class FuzzyGame(override val owner: AbstractParty, override val participant
 
 }
 
+  @Test
+    fun `play game`() {
+       // game = GameInitiator() + execute
+        // while (game.isNotFinished()) {
+            // currentPlayer = game.owner
+            // currentPlayerNode = getTheNode(currentPlayer)
+            // nextFlow = NextStepFlow(game, actionType)
+        // game = startFlow(nextFlow) .. future ...
+        // }
+    }
+
 
 //TODO: implement receiver flow - all transactions are passed to all players
 //Suspendble
